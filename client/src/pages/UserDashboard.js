@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useContext, useRef } from 'react';
+import React, {
+  useEffect,
+  useState,
+  useContext,
+  useRef,
+  useCallback,
+} from 'react';
 import axios from '../axios';
 import UserForm from '../components/UserForm';
 import { AuthContext } from '../context/AuthContext';
@@ -12,51 +18,55 @@ function UserDashboard() {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
+  // 🔑 fetchUsers ko stable banaya (ESLint + CI safe)
+  const fetchUsers = useCallback(() => {
+    axios
+      .get('/users')
+      .then((res) => setUsers(res.data))
+      .catch((err) => {
+        console.error('Fetch Error:', err);
+        if (err.response?.status === 401) logout();
+      });
+  }, [logout]);
+
+  // 🔒 Auth + data loading
   useEffect(() => {
     if (!user) {
       navigate('/login');
     } else {
       fetchUsers();
     }
-  }, [user, navigate]);
-
-  const fetchUsers = () => {
-    axios
-      .get('/users') // ✅ Fixed
-      .then(res => setUsers(res.data))
-      .catch(err => {
-        console.error('Fetch Error:', err);
-        if (err.response?.status === 401) logout();
-      });
-  };
+  }, [user, navigate, fetchUsers]);
 
   const handleCreate = (userData) => {
     axios
-      .post('/users', userData) // ✅ Fixed
+      .post('/users', userData)
       .then(() => {
         fetchUsers();
         setEditingUser(null);
       })
-      .catch(err => console.error('Create Error:', err));
+      .catch((err) => console.error('Create Error:', err));
   };
 
   const handleUpdate = (id, userData) => {
     if (user?.role !== 'admin') return;
+
     axios
-      .put(`/users/${id}`, userData) // ✅ Fixed
+      .put(`/users/${id}`, userData)
       .then(() => {
         fetchUsers();
         setEditingUser(null);
       })
-      .catch(err => console.error('Update Error:', err));
+      .catch((err) => console.error('Update Error:', err));
   };
 
   const handleDelete = (id) => {
     if (user?.role !== 'admin') return;
+
     axios
-      .delete(`/users/${id}`) // ✅ Fixed
+      .delete(`/users/${id}`)
       .then(fetchUsers)
-      .catch(err => console.error('Delete Error:', err));
+      .catch((err) => console.error('Delete Error:', err));
   };
 
   const handleEditClick = (selectedUser) => {
@@ -91,10 +101,15 @@ function UserDashboard() {
 
       <table className="table">
         <thead>
-          <tr><th>ID</th><th>Name</th><th>Email</th><th>Actions</th></tr>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Actions</th>
+          </tr>
         </thead>
         <tbody>
-          {users.map(userData => (
+          {users.map((userData) => (
             <tr key={userData.id}>
               <td data-label="ID">{userData.id}</td>
               <td data-label="Name">{userData.name}</td>
@@ -102,8 +117,12 @@ function UserDashboard() {
               <td data-label="Actions">
                 {user?.role === 'admin' ? (
                   <>
-                    <button onClick={() => handleEditClick(userData)}>Edit</button>{' '}
-                    <button onClick={() => handleDelete(userData.id)}>Delete</button>
+                    <button onClick={() => handleEditClick(userData)}>
+                      Edit
+                    </button>{' '}
+                    <button onClick={() => handleDelete(userData.id)}>
+                      Delete
+                    </button>
                   </>
                 ) : (
                   'N/A'
@@ -113,9 +132,12 @@ function UserDashboard() {
           ))}
         </tbody>
       </table>
+
       <button
         className="fab"
-        onClick={() => formRef.current?.scrollIntoView({ behavior: 'smooth' })}
+        onClick={() =>
+          formRef.current?.scrollIntoView({ behavior: 'smooth' })
+        }
       >
         +
       </button>
